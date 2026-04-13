@@ -17,7 +17,6 @@ import (
 
 func parseKakaoLink(link string, ld *LineData) (string, error) {
 	var kakaoID string
-	// var eid string
 	var err error
 	var warn string
 
@@ -48,12 +47,7 @@ func parseKakaoLink(link string, ld *LineData) (string, error) {
 	log.Debugln("Parsed kakao link:", link)
 	log.Debugln(kakaoJson.Result)
 
-	// if url.Host == "emoticon.kakao.com" {
-	// 	ld.DLink = fmt.Sprintf("http://item.kakaocdn.net/dw/%s.file_pack.zip", eid)
-	// } else {
 	ld.DLinks = kakaoJson.Result.ThumbnailUrls
-	// warn = WARN_KAKAO_PREFER_SHARE_LINK
-	// }
 
 	ld.Title = kakaoJson.Result.Title
 	ld.Id = kakaoJson.Result.TitleUrl
@@ -67,6 +61,7 @@ func fetchKakaoMetadata(kakaoJson *KakaoJson, kakaoID string) error {
 	apiUrl := "https://e.kakao.com/api/v1/items/t/" + kakaoID
 	page, err := httpGet(apiUrl)
 	if err != nil {
+		log.Errorln("fetchKakaoMetadata: failed to fetch:", apiUrl, err)
 		return err
 	}
 
@@ -181,7 +176,9 @@ func kakaoZipExtract(f string, ld *LineData) []string {
 		//PNG is not encrypted.
 		if filepath.Ext(f) != ".png" {
 			//This script decrypts the file in-place.
-			exec.Command("msb_kakao_decrypt.py", f).Run()
+			if err := exec.Command("msb_kakao_decrypt.py", f).Run(); err != nil {
+				log.Warnln("kakao decrypt failed for:", f, err)
+			}
 		}
 	}
 	return files

@@ -44,27 +44,43 @@ func parseLineLink(link string, ld *LineData) (string, error) {
 	d := "https://stickershop.line-scdn.net/stickershop/v1/product/" + i + "/iphone/"
 
 	if strings.Contains(u, "stickershop") || strings.Contains(u, "officialaccount/event/sticker") {
-		if strings.Contains(page, "MdIcoPlay_b") || strings.Contains(page, "MdIcoAni_b") {
+		// Use productInfo.meta API for category detection, since LINE Store
+		// no longer renders category CSS classes in server-side HTML.
+		lpi := LineProductInfo{}
+		piPage, piErr := httpGet(fmt.Sprintf("https://stickershop.line-scdn.net/stickershop/v1/product/%s/iphone/productInfo.meta", i))
+		if piErr == nil {
+			json.Unmarshal([]byte(piPage), &lpi)
+		} else {
+			log.Warnln("parseLineLink: failed to fetch productInfo.meta:", piErr)
+		}
+
+		switch lpi.StickerResourceType {
+		case LINE_SRC_ANIMATION:
 			c = LINE_STICKER_ANIMATION
 			d += "stickerpack@2x.zip"
 			a = true
-		} else if strings.Contains(page, "MdIcoMessageSticker_b") {
+		case LINE_SRC_POPUP:
+			// Distinguish popup-only (FOREGROUND) from popup-with-effect (BACKGROUND)
+			// by checking the popup layer of the first sticker.
+			if len(lpi.Stickers) > 0 && lpi.Stickers[0].Popup != nil &&
+				lpi.Stickers[0].Popup.Layer == LINE_POPUP_LAYER_BACKGROUND {
+				c = LINE_STICKER_POPUP_EFFECT
+			} else {
+				c = LINE_STICKER_POPUP
+			}
+			d += "stickerpack@2x.zip"
+			a = true
+		case LINE_SRC_PER_STICKER_TEXT:
 			d = u
 			c = LINE_STICKER_MESSAGE
-		} else if strings.Contains(page, "MdIcoNameSticker_b") {
+		case LINE_SRC_NAME_TEXT:
 			d += "sticker_name_base@2x.zip"
 			c = LINE_STICKER_NAME
-		} else if strings.Contains(page, "MdIcoFlash_b") || strings.Contains(page, "MdIcoFlashAni_b") {
-			c = LINE_STICKER_POPUP
-			d += "stickerpack@2x.zip"
-			a = true
-		} else if strings.Contains(page, "MdIcoEffectSoundSticker_b") || strings.Contains(page, "MdIcoEffectSticker_b") {
-			c = LINE_STICKER_POPUP_EFFECT
-			d += "stickerpack@2x.zip"
-			a = true
-		} else {
+		default:
+			// STATIC or unrecognized — treat as static.
+			// Also handles old packs where stickerResourceType is absent.
 			c = LINE_STICKER_STATIC
-			// According to collected logs, LINE ID befre exact 775 have special PNG encodings,
+			// According to collected logs, LINE ID before exact 775 have special PNG encodings,
 			// which are not parsable with libpng.
 			// You will get -> CgBI: unhandled critical chunk <- from IM.
 			// Workaround is to take the lower resolution "android" ones.
@@ -76,14 +92,16 @@ func parseLineLink(link string, ld *LineData) (string, error) {
 			}
 		}
 	} else if strings.Contains(u, "emojishop") {
-		if strings.Contains(page, "MdIcoPlay_b") {
+		e = true
+		// LINE Store no longer renders CSS class markers in static HTML,
+		// so we probe the animation endpoint to detect animated emoji.
+		animUrl := "https://stickershop.line-scdn.net/sticonshop/v1/sticon/" + i + "/iphone/package_animation.zip"
+		if probeURL(animUrl) {
 			c = LINE_EMOJI_ANIMATION
-			d = "https://stickershop.line-scdn.net/sticonshop/v1/sticon/" + i + "/iphone/package_animation.zip"
+			d = animUrl
 			a = true
-			e = true
 		} else {
 			c = LINE_EMOJI_STATIC
-			e = true
 			d = "https://stickershop.line-scdn.net/sticonshop/v1/sticon/" + i + "/iphone/package.zip"
 		}
 	} else {

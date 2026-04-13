@@ -134,10 +134,15 @@ type Price struct {
 	Price    float64 `json:"price"`
 }
 
+type StickerPopup struct {
+	Layer string `json:"layer"`
+}
+
 type Sticker struct {
-	ID     int64 `json:"id"`
-	Width  int64 `json:"width"`
-	Height int64 `json:"height"`
+	ID     int64         `json:"id"`
+	Width  int64         `json:"width"`
+	Height int64         `json:"height"`
+	Popup  *StickerPopup `json:"popup,omitempty"`
 }
 
 type Title struct {

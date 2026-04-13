@@ -26,6 +26,9 @@ func httpDownload(link string, f string) error {
 		return err
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("httpDownload: HTTP %d for %s", res.StatusCode, link)
+	}
 	fp, _ := os.Create(f)
 	defer fp.Close()
 	_, err = io.Copy(fp, res.Body)
@@ -40,6 +43,9 @@ func httpDownloadCurlUA(link string, f string) error {
 		return err
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("httpDownloadCurlUA: HTTP %d for %s", res.StatusCode, link)
+	}
 	fp, _ := os.Create(f)
 	defer fp.Close()
 	_, err = io.Copy(fp, res.Body)
@@ -48,13 +54,16 @@ func httpDownloadCurlUA(link string, f string) error {
 
 func httpGet(link string) (string, error) {
 	req, _ := http.NewRequest("GET", link, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
 	req.Header.Set("Accept-Language", "zh-Hant;q=0.9, ja;q=0.8, en;q=0.7")
 	res, err := httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("httpGet: HTTP %d for %s", res.StatusCode, link)
+	}
 	content, _ := io.ReadAll(res.Body)
 	return string(content), nil
 }
@@ -63,13 +72,16 @@ func httpGet(link string) (string, error) {
 func httpGetWithRedirLink(link string) (string, string, error) {
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", link, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
 	req.Header.Set("Accept-Language", "zh-Hant;q=0.9, ja;q=0.8, en;q=0.7")
 	res, err := client.Do(req)
 	if err != nil {
 		return "", "", err
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("httpGetWithRedirLink: HTTP %d for %s", res.StatusCode, link)
+	}
 	content, _ := io.ReadAll(res.Body)
 	return res.Request.URL.String(), string(content), nil
 }
@@ -82,13 +94,30 @@ func httpGetAndroidUA(link string) (string, error) {
 		return "", err
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("httpGetAndroidUA: HTTP %d for %s", res.StatusCode, link)
+	}
 	content, _ := io.ReadAll(res.Body)
 	return string(content), nil
 }
 
+// probeURL sends a HEAD request to check if a URL exists (returns 200).
+func probeURL(link string) bool {
+	req, _ := http.NewRequest("HEAD", link, nil)
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return false
+	}
+	defer res.Body.Close()
+	return res.StatusCode == http.StatusOK
+}
+
 func fDownload(link string, savePath string) error {
-	cmd := exec.Command("curl", "-o", savePath, link)
-	_, err := cmd.CombinedOutput()
+	cmd := exec.Command("curl", "--fail", "-o", savePath, link)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Warnln("fDownload error:", string(out))
+	}
 	return err
 }
 
