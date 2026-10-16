@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/go-co-op/gocron"
@@ -147,10 +148,10 @@ func initBot(conf ConfigTemplate) *tele.Bot {
 		// onError will terminate current session and log to terminal.
 		OnError: onError,
 	}
-	log.WithField("token", msbconf.BotToken).Info("Attempting to initialize...")
+	log.Info("Attempting to initialize...")
 	b, err := tele.NewBot(pref)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(strings.ReplaceAll(err.Error(), msbconf.BotToken, "***"))
 	}
 	return b
 }
