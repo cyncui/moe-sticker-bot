@@ -21,7 +21,7 @@ jobs:
           GOOS=darwin GOARCH=arm64 go build -o moe-sticker-bot_macos_aarch64 cmd/moe-sticker-bot/main.go
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3.1.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: msb_bins
           path: moe-sticker-bot*
@@ -44,7 +44,7 @@ jobs:
           GOOS=darwin GOARCH=arm64 go build -o msbimport_macos_aarch64 cmd/msbimport/main.go
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3.1.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: msbimport_bins
           path: msbimport*
@@ -59,7 +59,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v8.0.2
         with:
           path: releases/
 
